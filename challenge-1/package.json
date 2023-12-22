@@ -2,6 +2,7 @@
   "name": "nethermind-bots-deployment-detector",
   "displayName": "Nethermind Bots Deployment Detector",
   "version": "0.0.1",
+  "repository": "https://github.com/anii76/Forta-Bots-Challenges.git",
   "description": "Nethermind Bots Deployment Detector",
   "licenseUrl": "https://github.com/forta-network/forta-bot-sdk/blob/master/starter-project/LICENSE.md",
   "chainIds": [

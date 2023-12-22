@@ -6,7 +6,7 @@ This agent detects Bots deployed by Nethermind.
 
 ## Supported Chains
 
-- Ethereum
+- Polygon
 
 ## Alerts
 
