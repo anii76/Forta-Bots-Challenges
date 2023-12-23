@@ -16,13 +16,20 @@ Describe each of the type of alerts fired by this agent
   - Fired when a transaction contains a new bot deployment event (createAgent).
   - Severity is always set to "info" 
   - Type is always set to "info" 
-  - metadata : {createdBy, agentId, metadata, chainsId}
+  - Metadata contains :
+    - `createdBy` : Nethermind deployer address
+    - `agentId` : Newly created bot id.
+    - `metadata` : transaction metadata.
+    - `chainsIds` : list of ids of supported chains.
 
 - Nethermind-Bot-Updated
   - Fired when a transaction contains a bot update event (updateAgent).
   - Severity is always set to "info" 
   - Type is always set to "info" 
-  - metadata : {agentId, metadata, chainsId}
+  - Metadata contains : 
+    - `agentId` : bot id.
+    - `metadata` : transaction metadata.
+    - `chainsIds` : list of ids of supported chains.
 
 ## Test Data
 
