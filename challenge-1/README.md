@@ -12,7 +12,7 @@ This bot detects Bots deployed by Nethermind.
 
 Describe each of the type of alerts fired by this agent
 
-- Nethermind-Bot-Created
+- Nethermind-Bot-Creation
   - Fired when a transaction contains a new bot deployment event (createAgent).
   - Severity is always set to "info" 
   - Type is always set to "info" 
@@ -22,7 +22,7 @@ Describe each of the type of alerts fired by this agent
     - `metadata` : transaction metadata.
     - `chainsIds` : list of ids of supported chains.
 
-- Nethermind-Bot-Updated
+- Nethermind-Bot-Update
   - Fired when a transaction contains a bot update event (updateAgent).
   - Severity is always set to "info" 
   - Type is always set to "info" 
