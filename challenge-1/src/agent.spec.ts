@@ -1,52 +1,41 @@
-import { Finding, FindingSeverity, FindingType, HandleTransaction } from "forta-agent";
-import agent from "./agent";
+import { HandleTransaction } from "forta-agent";
+import { provideHandleTransaction } from "./agent";
 import { TestTransactionEvent } from "forta-agent-tools/lib/test";
 import { createAddress } from "forta-agent-tools";
+import { createFinding } from "./findings";
 
-const mockDeployerAddress = "0x88dc3a2284fa62e0027d6d6b1fcfdd2141a143b8";
-const mockRegistryAddress = "0x61447385B019187daa48e91c55c02AF1F1f3F863";
-const mockAnotherAddress = createAddress("0x1");
+const mockDeployerAddress = createAddress("0x1");
+const mockRegistryAddress = createAddress("0x2");
+const mockAnotherAddress = createAddress("0x3");
+
 const mockCreateAgentAbi =
   "function createAgent(uint256 agentId, address, string metadata, uint256[] chainIds) external";
 const mockUpdateAgentAbi = "function updateAgent(uint256 agentId, string metadata, uint256[] chainIds) public";
 const mockAnotherFunctionAbi = "function mockAnotherFunction(uint256 agentId, string metadata, uint256[] chainIds)";
-const mockAgentId = "1337";
+
+const mockAgentId = 1337;
 const mockChainIds = [137];
 const mockMetadata = "MockMetadata";
+const mockArgs = {
+  agentId: mockAgentId,
+  metadata: mockMetadata,
+  chainIds: mockChainIds,
+};
 
-const mockCreateFinding = Finding.fromObject({
-  name: "Nethermind Bots Deployment Detector",
-  description: `New bot created with id: ${mockAgentId}`,
-  alertId: "Nethermind-Bot-Creation",
-  severity: FindingSeverity.Info,
-  type: FindingType.Info,
-  metadata: {
-    createdBy: mockDeployerAddress,
-    agentId: mockAgentId,
-    metadata: mockMetadata,
-    chainIds: mockChainIds.toString(),
-  },
-});
-
-const mockUpdateFinding = Finding.fromObject({
-  name: "Nethermind Bots Update Detector",
-  description: `New update for bot with id: ${mockAgentId}`,
-  alertId: "Nethermind-Bot-Update",
-  severity: FindingSeverity.Info,
-  type: FindingType.Info,
-  metadata: {
-    agentId: mockAgentId,
-    metadata: mockMetadata,
-    chainIds: mockChainIds.toString(),
-  },
-});
+const mockCreateFinding = createFinding("Creation", mockDeployerAddress, mockArgs);
+const mockUpdateFinding = createFinding("Update", mockDeployerAddress, mockArgs);
 
 describe("Nethermind Bots Deployment Detector", () => {
   let handleTransaction: HandleTransaction;
   let mockTxEvent: TestTransactionEvent;
 
   beforeAll(() => {
-    handleTransaction = agent.handleTransaction;
+    handleTransaction = provideHandleTransaction(
+      mockDeployerAddress,
+      mockRegistryAddress,
+      mockCreateAgentAbi,
+      mockUpdateAgentAbi
+    );
   });
 
   beforeEach(() => {

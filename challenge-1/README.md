@@ -17,7 +17,7 @@ Describe each of the type of alerts fired by this agent
   - Severity is always set to "info" 
   - Type is always set to "info" 
   - Metadata contains :
-    - `createdBy` : Nethermind deployer address
+    - `deployer` : Nethermind deployer address
     - `agentId` : Newly created bot id.
     - `metadata` : transaction metadata.
     - `chainsIds` : list of ids of supported chains.
@@ -27,6 +27,7 @@ Describe each of the type of alerts fired by this agent
   - Severity is always set to "info" 
   - Type is always set to "info" 
   - Metadata contains : 
+    - `deployer` : Nethermind deployer address
     - `agentId` : bot id.
     - `metadata` : transaction metadata.
     - `chainsIds` : list of ids of supported chains.
