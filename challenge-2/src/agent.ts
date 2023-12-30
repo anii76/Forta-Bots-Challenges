@@ -1,35 +1,56 @@
-import {
-  Finding,
-  HandleTransaction,
-  TransactionEvent,
-  FindingSeverity,
-  FindingType,
-} from "forta-agent";
+import { Finding, HandleTransaction, TransactionEvent, FindingSeverity, FindingType, getEthersProvider, ethers, keccak256 } from "forta-agent";
+import { UNISWAP_FACTORY, SWAP_EVENT } from "./constants";
+const IUniswapV3Pool = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json");
+import { getCreate2Address } from "@ethersproject/address"
+import { POOL_INIT_CODE_HASH } from "@uniswap/v3-sdk";
 
-//for a specific pool
-const swap_event : string =
-  "event Swap(address indexed sender, address indexed recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick)";
-const created_pool_event =
-  "event PoolCreated(address indexed token0, address indexed token1, uint24 indexed fee, int24 tickSpacing, address pool)";
-const uniswap_router = "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD"; //ethereum (Universal router ?)
-const swapv3_router : string = "0xE592427A0AEce92De3Edee1F18E0157C05861564"; //ethereum / Polygone
-const pools = "";
 
-function provideHandleTransaction(
-  swap_event: string,
-  swapv3_router : string
-): HandleTransaction {
+const ethersProvider = getEthersProvider();
+//function compare addresses 
+//-> fetches the contract and computes the create2 address  
+//fetches the address from lru-cache with the other parameters (we need blocknum for that)
+const verifyPoolAddress = async (address:string, provider: ethers.providers.JsonRpcProvider): Promise<boolean> => {
+  const poolContract = new ethers.Contract(address,IUniswapV3Pool.abi,provider)
+  const parameters = [ //exception here
+    await poolContract.token0(),
+    await poolContract.token1(),
+    await poolContract.fee()
+  ]
+  const abiCoder = new ethers.utils.AbiCoder(); 
+  //const salt = keccak256(abiCoder.encode(["address","address","uint24"],parameters))
+  const salt = ethers.utils.solidityKeccak256(["bytes"],[abiCoder.encode(["address","address","uint24"],parameters)])
+  const from = UNISWAP_FACTORY;
+  const initHashCode = POOL_INIT_CODE_HASH;
+
+  const computedAddress = getCreate2Address(from,salt,initHashCode)
+  console.log(computedAddress)
+  
+  return computedAddress.toLowerCase() === address.toLowerCase();
+}
+
+
+export function provideHandleTransaction(swap_event: string, provider: ethers.providers.JsonRpcProvider): HandleTransaction {
   return async function handleTransaction(txEvent: TransactionEvent) {
     const findings: Finding[] = [];
 
-    //if (txEvent.to != swapv3_router) return findings;
-    console.log("here 1");
-    const swaps =  txEvent.filterLog(swap_event ,swapv3_router.toLocaleLowerCase());
-    console.log("here 2");
+    // filter for swap events
+    const swaps = txEvent.filterLog(swap_event);
+    
     if (!swaps.length) return findings;
-    console.log("here 3");
-    swaps.forEach((swap) => {
-      //console.log(swap.args.toString());
+
+    for (const swap of swaps) {
+      //Verify is swap is valid (from UniswapV3)
+      let isValid : boolean; 
+      try {
+        isValid = await verifyPoolAddress(swap["address"],provider);
+      } catch (error) {
+        return findings;
+      }
+      //const result = await verifyPoolAddress(swap["address"],provider);
+
+      //return finding
+      const {sender, recipient, amount0, amount1, sqrtPricex96, liquidity, tick} = swap.args
+      if (!isValid) return findings;
       findings.push(
         Finding.fromObject({
           name: "Nethermind Swaps Detector",
@@ -38,16 +59,23 @@ function provideHandleTransaction(
           protocol: "uniswapv3",
           severity: FindingSeverity.Info,
           type: FindingType.Info,
-          metadata: {},
+          metadata: {
+            poolAddress : swap["address"],
+            from : txEvent.from, //who initiated the swap (not intrested ?),
+            amount0: amount0,
+            amount1: amount1,
+            sender: sender,
+            recipient: recipient //UniswapV3Router 
+          },
         })
       );
-    });
-      
-
+    }
     return findings;
   };
 }
 
+
+
 export default {
-  handleTransaction: provideHandleTransaction(swap_event, swapv3_router),
+  handleTransaction: provideHandleTransaction(SWAP_EVENT, ethersProvider),
 };
