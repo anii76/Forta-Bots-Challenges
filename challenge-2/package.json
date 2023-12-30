@@ -30,7 +30,10 @@
     "format": "prettier --write \"src/**/*.ts\""
   },
   "dependencies": {
-    "forta-agent": "^0.1.48"
+    "@uniswap/sdk-core": "^4.0.10",
+    "@uniswap/v3-sdk": "^3.10.0",
+    "forta-agent": "^0.1.48",
+    "forta-agent-tools": "^3.2.12"
   },
   "devDependencies": {
     "@types/jest": "^29.5.10",

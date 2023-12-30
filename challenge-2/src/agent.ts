@@ -3,21 +3,19 @@ import { UNISWAP_FACTORY, SWAP_EVENT } from "./constants";
 const IUniswapV3Pool = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json");
 import { getCreate2Address } from "@ethersproject/address"
 import { POOL_INIT_CODE_HASH } from "@uniswap/v3-sdk";
+import { createFinding } from "./findings";
 
 
 const ethersProvider = getEthersProvider();
-//function compare addresses 
-//-> fetches the contract and computes the create2 address  
-//fetches the address from lru-cache with the other parameters (we need blocknum for that)
+
 const verifyPoolAddress = async (address:string, provider: ethers.providers.JsonRpcProvider): Promise<boolean> => {
   const poolContract = new ethers.Contract(address,IUniswapV3Pool.abi,provider)
-  const parameters = [ //exception here
+  const parameters = [ 
     await poolContract.token0(),
     await poolContract.token1(),
     await poolContract.fee()
   ]
   const abiCoder = new ethers.utils.AbiCoder(); 
-  //const salt = keccak256(abiCoder.encode(["address","address","uint24"],parameters))
   const salt = ethers.utils.solidityKeccak256(["bytes"],[abiCoder.encode(["address","address","uint24"],parameters)])
   const from = UNISWAP_FACTORY;
   const initHashCode = POOL_INIT_CODE_HASH;
@@ -46,30 +44,11 @@ export function provideHandleTransaction(swap_event: string, provider: ethers.pr
       } catch (error) {
         return findings;
       }
-      //const result = await verifyPoolAddress(swap["address"],provider);
 
-      //return finding
-      const {sender, recipient, amount0, amount1, sqrtPricex96, liquidity, tick} = swap.args
       if (!isValid) return findings;
-      findings.push(
-        Finding.fromObject({
-          name: "Nethermind Swaps Detector",
-          description: `New swap :`,
-          alertId: "Swap",
-          protocol: "uniswapv3",
-          severity: FindingSeverity.Info,
-          type: FindingType.Info,
-          metadata: {
-            poolAddress : swap["address"],
-            from : txEvent.from, //who initiated the swap (not intrested ?),
-            amount0: amount0,
-            amount1: amount1,
-            sender: sender,
-            recipient: recipient //UniswapV3Router 
-          },
-        })
-      );
+      findings.push(createFinding(swap));
     }
+
     return findings;
   };
 }
