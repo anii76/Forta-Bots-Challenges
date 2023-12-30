@@ -7,7 +7,7 @@ This agent detects transactions with large Tether transfers
 ## Supported Chains
 
 - Ethereum
-- List any other chains this agent can support e.g. BSC
+- Mainnet, Polygon, Optimism, Arbitrum
 
 ## Alerts
 
@@ -24,3 +24,6 @@ Describe each of the type of alerts fired by this agent
 The agent behaviour can be verified with the following transactions:
 
 - 0x3a0f757030beec55c22cbc545dd8a844cbbb2e6019461769e1bc3f3a95d10826 (15,000 USDT)
+
+on polygon (contains swap)
+- 0x58da2995b04299a4a463be3091c4ab791bd9a1d978805bc0f750c220e9208528

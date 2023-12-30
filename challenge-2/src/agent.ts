@@ -10,32 +10,40 @@ import { LRUCache } from "lru-cache";
 const options = { max: 1000 };
 const cache: LRUCache<string, boolean> = new LRUCache(options);
 
+// Ethers provider
 const ethersProvider = getEthersProvider();
 
-//fetches the address from lru-cache with the other parameters (we need blocknum for that)
 const verifyPoolAddress = async (
-  address: string,
+  poolAddress: string,
+  factoryAddress: string,
+  initHashCode: string,
   provider: ethers.providers.JsonRpcProvider,
   cache: LRUCache<string, boolean>
 ): Promise<boolean> => {
-  if (cache.has(address)) return cache.get(address) as boolean;
+  if (cache.has(poolAddress)) return cache.get(poolAddress) as boolean;
 
-  const poolContract = new ethers.Contract(address, IUniswapV3Pool.abi, provider);
+  const poolContract = new ethers.Contract(poolAddress, IUniswapV3Pool.abi, provider);
   const parameters = [await poolContract.token0(), await poolContract.token1(), await poolContract.fee()];
   const abiCoder = new ethers.utils.AbiCoder();
   const encodedParams = abiCoder.encode(["address", "address", "uint24"], parameters);
   const salt = ethers.utils.solidityKeccak256(["bytes"], [encodedParams]);
-  const from = UNISWAP_FACTORY;
-  const initHashCode = POOL_INIT_CODE_HASH;
 
-  const computedAddress = getCreate2Address(from, salt, initHashCode);
-  console.log(computedAddress);
+  // Compute the correspondant address
+  const computedAddress = getCreate2Address(factoryAddress, salt, initHashCode);
+  
+  // Compare the swap event address with the computed one
+  const isValid = computedAddress.toLowerCase() === poolAddress.toLowerCase();
 
-  return computedAddress.toLowerCase() === address.toLowerCase();
-}
+  // Update cache
+  cache.set(poolAddress, isValid);
+
+  return isValid;
+};
 
 export function provideHandleTransaction(
-  swap_event: string,
+  swapEventAbi: string,
+  factoryAddress: string,
+  initHashCode: string,
   provider: ethers.providers.JsonRpcProvider,
   cache: LRUCache<string, boolean>
 ): HandleTransaction {
@@ -43,7 +51,7 @@ export function provideHandleTransaction(
     const findings: Finding[] = [];
 
     // filter for swap events
-    const swaps = txEvent.filterLog(swap_event);
+    const swaps = txEvent.filterLog(swapEventAbi);
 
     if (!swaps.length) return findings;
 
@@ -52,17 +60,14 @@ export function provideHandleTransaction(
       let isValid: boolean;
 
       try {
-        isValid = await verifyPoolAddress(swap["address"], provider, cache);
+        isValid = await verifyPoolAddress(swap.address, factoryAddress, initHashCode, provider, cache);
       } catch (error) {
         return findings;
       }
 
-      //update cache
-      cache.set(swap["address"], isValid);
-
       if (!isValid) return findings;
 
-      findings.push(createFinding(swap));
+      findings.push(createFinding(swap.address, swap.args));
     }
 
     return findings;
@@ -70,5 +75,5 @@ export function provideHandleTransaction(
 }
 
 export default {
-  handleTransaction: provideHandleTransaction(SWAP_EVENT, ethersProvider, cache),
+  handleTransaction: provideHandleTransaction(SWAP_EVENT, UNISWAP_FACTORY, POOL_INIT_CODE_HASH, ethersProvider, cache),
 };
