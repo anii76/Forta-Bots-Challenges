@@ -5,7 +5,7 @@
   "repository": "https://github.com/anii76/Forta-Bots-Challenges/challenge-2",
   "licenseUrl": "https://github.com/anii76/Forta-Bots-Challenges/challenge-2/LICENSE.md",
   "chainIds": [
-    1, 137
+    1, 10, 137, 42161
   ],
   "scripts": {
     "build": "tsc",
