@@ -10,7 +10,7 @@ This bot detects Bots deployed by Nethermind.
 
 ## Alerts
 
-Describe each of the type of alerts fired by this agent
+Describe each of the type of alerts fired by this bot
 
 - Nethermind-Bot-Creation
   - Fired when a transaction contains a new bot deployment event (createAgent).
