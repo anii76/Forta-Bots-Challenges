@@ -5,7 +5,10 @@
   "repository": "https://github.com/anii76/Forta-Bots-Challenges/challenge-2",
   "licenseUrl": "https://github.com/anii76/Forta-Bots-Challenges/challenge-2/LICENSE.md",
   "chainIds": [
-    1, 10, 137, 42161
+    1,
+    10,
+    137,
+    42161
   ],
   "scripts": {
     "build": "tsc",
@@ -30,9 +33,6 @@
     "format": "prettier --write \"src/**/*.ts\""
   },
   "dependencies": {
-    "@uniswap/sdk-core": "^4.0.10",
-    "@uniswap/v3-sdk": "^3.10.0",
-    "bignumber.js": "^9.1.2",
     "forta-agent": "^0.1.48",
     "forta-agent-tools": "^3.2.12",
     "lru-cache": "^10.1.0"
