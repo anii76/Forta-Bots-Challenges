@@ -1,91 +1,126 @@
-import { HandleTransaction } from "forta-agent";
+import { utils, BigNumber, providers } from "ethers";
 import { getCreate2Address } from "@ethersproject/address";
-import { provideHandleTransaction } from "./agent";
+import { HandleTransaction } from "forta-agent";
 import { TestTransactionEvent, MockEthersProvider } from "forta-agent-tools/lib/test";
 import { createAddress } from "forta-agent-tools";
-import { createFinding } from "./findings";
 import { LRUCache } from "lru-cache";
-import { utils, BigNumber, providers } from "ethers";
-import { POOL_INIT_CODE_HASH, SWAP_EVENT, UNISWAP_FACTORY, UNISWAP_POOL_ABI } from "./constants"; //remove those apres :))
+import { provideHandleTransaction } from "./agent";
+import { createFinding } from "./findings";
 
-//I like the way they added Cases and Fail_cases !
-
-//UniswapV2 factory 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
-//these are not mock variables :))
-const mockFoctoryAddress = UNISWAP_FACTORY; //probably keep original createAddress("0x1");
-const mockInitHashCode = POOL_INIT_CODE_HASH;
-const mockSwapEventAbi = SWAP_EVENT;
-
-const mockSwapArgs = {
-  //tx.address must be pool
-  sender: "0xE592427A0AEce92De3Edee1F18E0157C05861564", //createAddress("0x2"),
-  recipient: "0x96Fa062Fa34B7fE0Da35efcb4D11093a525b87e5", //createAddress("0x3"),
-  amount0: BigNumber.from("-71582139203725241498"), //BigNumber.from('1337'),
-  amount1: BigNumber.from("1499995"), //BigNumber.from('1223'),
-  sqrtPriceX96: BigNumber.from("11466435288667505250591"), //BigNumber.from('11'),
-  liquidity: BigNumber.from("151253654937605407"), //BigNumber.from('22'),
-  tick: -314985, //33,
+const addCallToPool = (mockProvider: MockEthersProvider, block: number, poolAddress: string, poolData: any) => {
+  mockProvider
+    .addCallTo(poolAddress, block, iface, "token0", {
+      inputs: [],
+      outputs: [poolData.token0],
+    })
+    .addCallTo(poolAddress, block, iface, "token1", {
+      inputs: [],
+      outputs: [poolData.token1],
+    })
+    .addCallTo(poolAddress, block, iface, "fee", {
+      inputs: [],
+      outputs: [poolData.fee],
+    });
 };
 
-const mockCache = new LRUCache<string, boolean>({ max: 1000 });
-
-const mockValidUniswapPool1 = {
-  address: "0x71c5ce9df27ea2cef83bef4f4c241eaf6ccfc621", //"0x941061770214613ba0ca3db9a700c39587bb89b6",
-  token0: "0x87d6F8eDECcbCcA766D2880D19b2C3777D322C22", //"0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
-  token1: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", //"0x430EF9263E76DAE63c84292C3409D61c598E9682",
-  fee: BigNumber.from(500),
-};
-
-const mockValidUniswapPool2 = {
-  address: "0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8",
-  token0: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-  token1: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-  fee: BigNumber.from(3000),
-};
-
-const mockInvalidUniswapPool1 = {
-  address: createAddress("0xccccd"),
-  token0: createAddress("0x106"),
-  token1: createAddress("0x5555"),
-  fee: BigNumber.from(1337),
-};
-
-const mockInvalidUniswapPool2 = {
-  address: createAddress("0xdeadbeef"),
-  token0: createAddress("0x444"),
-  token1: createAddress("0x7777"),
-  fee: BigNumber.from(50),
-};
-
-//update like this https://github.com/NethermindEth/Forta-Agents/blob/3c6e6f8aac447d2afb5e17e4bb0851a582c014c0/Apeswap-Bots/New-Pair-Creation/src/agent.spec.ts#L86
 const createMockPoolAddress = (factoryAddress: string, initHashCode: string, parameters: any[]) => {
   const abiCoder = new utils.AbiCoder();
   const encodedParams = abiCoder.encode(["address", "address", "uint24"], parameters);
   const salt = utils.solidityKeccak256(["bytes"], [encodedParams]);
   const computedAddress = getCreate2Address(factoryAddress, salt, initHashCode);
-  return computedAddress;
+  return computedAddress.toLocaleLowerCase();
 };
 
-const mockValidPoolAddress = createMockPoolAddress(mockFoctoryAddress, mockInitHashCode, [
-  createAddress("0x444"),
-  createAddress("0x7777"),
-  3000,
+const mockFoctoryAddress = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
+const mockInitHashCode = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
+const mockSwapEventAbi =
+  "event Swap(address indexed sender, address indexed recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick)";
+const mockUniswapPoolAbi = [
+  "function token0() external view returns (address)",
+  "function token1() external view returns (address)",
+  "function fee() external view returns (uint24)",
+];
+
+const iface = new utils.Interface(mockUniswapPoolAbi);
+
+// Test cases
+const mockValidPoolData1 = {
+  token0: createAddress("0x87d6F8eDECcbCcA766D2880D19b2C3777D322C22"),
+  token1: createAddress("0xc2132D05D31c914a87C6611C10748AEb04B58e8F"),
+  fee: BigNumber.from(500),
+};
+
+const mockValidPoolData2 = {
+  token0: createAddress("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"),
+  token1: createAddress("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
+  fee: BigNumber.from(3000),
+};
+
+const mockValidPoolAddress1 = createMockPoolAddress(mockFoctoryAddress, mockInitHashCode, [
+  mockValidPoolData1.token0,
+  mockValidPoolData1.token1,
+  mockValidPoolData1.fee,
 ]);
-const mockInvalidPoolAddress = createAddress("0x17773"); //createMockPoolAddress(mockFoctoryAddress, mockInitHashCode,[ createAddress("0x444"), createAddress("0x7777"), 3000]);
 
-const iface: utils.Interface = new utils.Interface(UNISWAP_POOL_ABI);
+const mockValidPoolAddress2 = createMockPoolAddress(mockFoctoryAddress, mockInitHashCode, [
+  mockValidPoolData2.token0,
+  mockValidPoolData2.token1,
+  mockValidPoolData2.fee,
+]);
 
-describe("", () => {
-  //variables
+// Fail cases
+const mockInvalidPoolData1 = {
+  token0: createAddress("0x106"),
+  token1: createAddress("0x5555"),
+  fee: BigNumber.from(1337),
+};
+
+const mockInvalidPoolData2 = {
+  token0: createAddress("0x444"),
+  token1: createAddress("0x7777"),
+  fee: BigNumber.from(50),
+};
+
+const mockInvalidPoolAddress1 = createAddress("0xccccd");
+const mockInvalidPoolAddress2 = createAddress("0xdeadbeef");
+
+// Test data
+const mockSwapArgs1 = {
+  sender: createAddress("0x2"),
+  recipient: createAddress("0x3"),
+  amount0: BigNumber.from("-71582139203725241498"),
+  amount1: BigNumber.from("1499995"),
+  sqrtPriceX96: BigNumber.from("11466435288667505250591"),
+  liquidity: BigNumber.from("151253654937605407"),
+  tick: -314985,
+};
+
+const mockSwapArgs2 = {
+  sender: createAddress("0x4"),
+  recipient: createAddress("0x5"),
+  amount0: BigNumber.from("1337"),
+  amount1: BigNumber.from("1223"),
+  sqrtPriceX96: BigNumber.from("11"),
+  liquidity: BigNumber.from("22"),
+  tick: 33,
+};
+
+const mockFinding1 = createFinding(mockValidPoolAddress1, mockSwapArgs1);
+const mockFinding2 = createFinding(mockValidPoolAddress2, mockSwapArgs2);
+
+const testBlock = [2022, 2023, 2024];
+
+describe("UniswapV3 Swaps Detector", () => {
   let handleTransaction: HandleTransaction;
   let mockTxEvent: TestTransactionEvent;
   let mockProvider: MockEthersProvider;
+  let mockCache = new LRUCache<string, boolean>({ max: 1000 });
 
-  //beforeAll
   beforeEach(() => {
     mockProvider = new MockEthersProvider();
     handleTransaction = provideHandleTransaction(
       mockSwapEventAbi,
+      mockUniswapPoolAbi,
       mockFoctoryAddress,
       mockInitHashCode,
       mockProvider as unknown as providers.JsonRpcProvider,
@@ -94,11 +129,6 @@ describe("", () => {
     mockProvider.call.mockClear();
   });
 
-  /* beforeEach (() => {
-        mockTxEvent = new TestTransactionEvent();
-        mockProvider = new MockEthersProvider();
-    });*/
-  //it
   it("returns empty findings if there are no swap events.", async () => {
     mockTxEvent = new TestTransactionEvent();
 
@@ -107,199 +137,58 @@ describe("", () => {
   });
 
   it("returns a finding if there is a valid swap event.", async () => {
-    //add an invalid swap :))
     mockTxEvent = new TestTransactionEvent()
-      .setBlock(10)
-      .addEventLog(SWAP_EVENT, mockValidUniswapPool1.address, [
-        mockSwapArgs.sender,
-        mockSwapArgs.recipient,
-        mockSwapArgs.amount0,
-        mockSwapArgs.amount1,
-        mockSwapArgs.sqrtPriceX96,
-        mockSwapArgs.liquidity,
-        mockSwapArgs.tick,
-      ])
-      .addEventLog(SWAP_EVENT, mockInvalidUniswapPool1.address, [
-        mockSwapArgs.sender,
-        mockSwapArgs.recipient,
-        mockSwapArgs.amount0,
-        mockSwapArgs.amount1,
-        mockSwapArgs.sqrtPriceX96,
-        mockSwapArgs.liquidity,
-        mockSwapArgs.tick,
-      ]);
+      .setBlock(testBlock[0])
+      .addEventLog(mockSwapEventAbi, mockValidPoolAddress1, Object.values(mockSwapArgs1))
+      .addEventLog(mockSwapEventAbi, mockInvalidPoolAddress1, Object.values(mockSwapArgs2));
 
-    //move this up cuz constant (function with mockpooldata & blocknum?
-    //try both mocking everything and using real data // I can create this in a function here
-    mockProvider.addCallTo(mockValidUniswapPool1.address, 10, iface, "token0", {
-      inputs: [],
-      outputs: [mockValidUniswapPool1.token0],
-    });
-    mockProvider.addCallTo(mockValidUniswapPool1.address, 10, iface, "token1", {
-      inputs: [],
-      outputs: [mockValidUniswapPool1.token1],
-    });
-    mockProvider.addCallTo(mockValidUniswapPool1.address, 10, iface, "fee", {
-      inputs: [],
-      outputs: [mockValidUniswapPool1.fee],
-    });
-
+    //valid swap call
+    addCallToPool(mockProvider, testBlock[0], mockValidPoolAddress1, mockValidPoolData1);
     //invalid swap call
-    mockProvider.addCallTo(mockInvalidUniswapPool1.address, 10, iface, "token0", {
-      inputs: [],
-      outputs: [mockInvalidUniswapPool1.token0],
-    });
-    mockProvider.addCallTo(mockInvalidUniswapPool1.address, 10, iface, "token1", {
-      inputs: [],
-      outputs: [mockInvalidUniswapPool1.token1],
-    });
-    mockProvider.addCallTo(mockInvalidUniswapPool1.address, 10, iface, "fee", {
-      inputs: [],
-      outputs: [mockInvalidUniswapPool1.fee],
-    });
+    addCallToPool(mockProvider, testBlock[0], mockInvalidPoolAddress1, mockInvalidPoolData1);
 
     const findings = await handleTransaction(mockTxEvent);
-    console.log(mockCache.get(mockInvalidUniswapPool1.address));
+
     expect(mockProvider.call).toHaveBeenCalledTimes(6);
-    expect(findings).toStrictEqual([createFinding(mockValidUniswapPool1.address, mockSwapArgs)]);
+    expect(findings).toStrictEqual([mockFinding1]);
   });
 
   it("returns empty findings if there are no valid swap events.", async () => {
-    //this test fails because this one is in cache already
-    //make invalid swap event 2 :))
     mockTxEvent = new TestTransactionEvent()
-      .setBlock(20)
-      .addEventLog(SWAP_EVENT, mockInvalidUniswapPool2.address, [
-        mockSwapArgs.sender,
-        mockSwapArgs.recipient,
-        mockSwapArgs.amount0,
-        mockSwapArgs.amount1,
-        mockSwapArgs.sqrtPriceX96,
-        mockSwapArgs.liquidity,
-        mockSwapArgs.tick,
-      ])
-      .addEventLog(SWAP_EVENT, mockInvalidUniswapPool1.address, [
-        mockSwapArgs.sender,
-        mockSwapArgs.recipient,
-        mockSwapArgs.amount0,
-        mockSwapArgs.amount1,
-        mockSwapArgs.sqrtPriceX96,
-        mockSwapArgs.liquidity,
-        mockSwapArgs.tick,
-      ]);
+      .setBlock(testBlock[1])
+      .addEventLog(mockSwapEventAbi, mockInvalidPoolAddress2, Object.values(mockSwapArgs1))
+      .addEventLog(mockSwapEventAbi, mockInvalidPoolAddress1, Object.values(mockSwapArgs2));
 
-    //invalid swap call2
-    mockProvider.addCallTo(mockInvalidUniswapPool2.address, 20, iface, "token0", {
-      inputs: [],
-      outputs: [mockInvalidUniswapPool2.token0],
-    });
-    mockProvider.addCallTo(mockInvalidUniswapPool2.address, 20, iface, "token1", {
-      inputs: [],
-      outputs: [mockInvalidUniswapPool2.token1],
-    });
-    mockProvider.addCallTo(mockInvalidUniswapPool2.address, 20, iface, "fee", {
-      inputs: [],
-      outputs: [mockInvalidUniswapPool2.fee],
-    });
-
-    mockProvider.addCallTo(mockInvalidUniswapPool1.address, 20, iface, "token0", {
-      inputs: [],
-      outputs: [mockInvalidUniswapPool1.token0],
-    });
-    mockProvider.addCallTo(mockInvalidUniswapPool1.address, 20, iface, "token1", {
-      inputs: [],
-      outputs: [mockInvalidUniswapPool1.token1],
-    });
-    mockProvider.addCallTo(mockInvalidUniswapPool1.address, 20, iface, "fee", {
-      inputs: [],
-      outputs: [mockInvalidUniswapPool1.fee],
-    });
+    //invalid swap calls
+    addCallToPool(mockProvider, testBlock[1], mockInvalidPoolAddress2, mockInvalidPoolData2);
+    addCallToPool(mockProvider, testBlock[1], mockInvalidPoolAddress1, mockInvalidPoolData1);
 
     const findings = await handleTransaction(mockTxEvent);
-    
-    expect(mockCache.get(mockInvalidUniswapPool1.address)).toEqual(false);
-    expect(mockCache.get(mockValidUniswapPool1.address)).toEqual(true);
+
+    expect(mockCache.get(mockInvalidPoolAddress1)).toEqual(false);
     expect(mockProvider.call).toHaveBeenCalledTimes(3); //pool1 is already in cache
     expect(findings).toStrictEqual([]);
   });
 
   it("returns multiple findings if there are multiple swap events.", async () => {
-    //include unvalid events
-    mockTxEvent = new TestTransactionEvent();
     mockTxEvent = new TestTransactionEvent()
-      .setBlock(30)
-      .addEventLog(SWAP_EVENT, mockValidUniswapPool1.address, [
-        mockSwapArgs.sender,
-        mockSwapArgs.recipient,
-        mockSwapArgs.amount0,
-        mockSwapArgs.amount1,
-        mockSwapArgs.sqrtPriceX96,
-        mockSwapArgs.liquidity,
-        mockSwapArgs.tick,
-      ])
-      .addEventLog(SWAP_EVENT, mockValidUniswapPool2.address, [
-        mockSwapArgs.sender,
-        mockSwapArgs.recipient,
-        mockSwapArgs.amount0,
-        mockSwapArgs.amount1,
-        mockSwapArgs.sqrtPriceX96,
-        mockSwapArgs.liquidity,
-        mockSwapArgs.tick,
-      ])
-      .addEventLog(SWAP_EVENT, mockInvalidUniswapPool1.address, [
-        mockSwapArgs.sender,
-        mockSwapArgs.recipient,
-        mockSwapArgs.amount0,
-        mockSwapArgs.amount1,
-        mockSwapArgs.sqrtPriceX96,
-        mockSwapArgs.liquidity,
-        mockSwapArgs.tick,
-      ]);
+      .setBlock(testBlock[2])
+      .addEventLog(mockSwapEventAbi, mockValidPoolAddress1, Object.values(mockSwapArgs1))
+      .addEventLog(mockSwapEventAbi, mockValidPoolAddress2, Object.values(mockSwapArgs2))
+      .addEventLog(mockSwapEventAbi, mockInvalidPoolAddress1, Object.values(mockSwapArgs1));
 
-    mockProvider.addCallTo(mockValidUniswapPool1.address, 30, iface, "token0", {
-      inputs: [],
-      outputs: [mockValidUniswapPool1.token0],
-    });
-    mockProvider.addCallTo(mockValidUniswapPool1.address, 30, iface, "token1", {
-      inputs: [],
-      outputs: [mockValidUniswapPool1.token1],
-    });
-    mockProvider.addCallTo(mockValidUniswapPool1.address, 30, iface, "fee", {
-      inputs: [],
-      outputs: [mockValidUniswapPool1.fee],
-    });
-    // valid swap call
-    mockProvider.addCallTo(mockValidUniswapPool2.address, 30, iface, "token0", {
-      inputs: [],
-      outputs: [mockValidUniswapPool2.token0],
-    });
-    mockProvider.addCallTo(mockValidUniswapPool2.address, 30, iface, "token1", {
-      inputs: [],
-      outputs: [mockValidUniswapPool2.token1],
-    });
-    mockProvider.addCallTo(mockValidUniswapPool2.address, 30, iface, "fee", {
-      inputs: [],
-      outputs: [mockValidUniswapPool2.fee],
-    });
+    //valid swap calls
+    addCallToPool(mockProvider, testBlock[2], mockValidPoolAddress1, mockValidPoolData1);
+    addCallToPool(mockProvider, testBlock[2], mockValidPoolAddress2, mockValidPoolData2);
+
     //invalid swap call
-    mockProvider.addCallTo(mockInvalidUniswapPool1.address, 30, iface, "token0", {
-      inputs: [],
-      outputs: [mockInvalidUniswapPool1.token0],
-    });
-    mockProvider.addCallTo(mockInvalidUniswapPool1.address, 30, iface, "token1", {
-      inputs: [],
-      outputs: [mockInvalidUniswapPool1.token1],
-    });
-    mockProvider.addCallTo(mockInvalidUniswapPool1.address, 30, iface, "fee", {
-      inputs: [],
-      outputs: [mockInvalidUniswapPool1.fee],
-    });
-
-    const mockFinding1 = createFinding(mockValidUniswapPool1.address, mockSwapArgs);
-    const mockFinding2 = createFinding(mockValidUniswapPool2.address, mockSwapArgs); //create a second mockSwap
+    addCallToPool(mockProvider, testBlock[2], mockInvalidPoolAddress1, mockInvalidPoolData1);
 
     const findings = await handleTransaction(mockTxEvent);
-    expect(mockProvider.call).toHaveBeenCalledTimes(3); //pool1 & pool2 already in cache
+
+    expect(mockCache.get(mockInvalidPoolAddress1)).toEqual(false);
+    expect(mockCache.get(mockValidPoolAddress1)).toEqual(true);
+    expect(mockProvider.call).toHaveBeenCalledTimes(3); //validPool1 & invalidPool1 already in cache
     expect(findings).toStrictEqual([mockFinding1, mockFinding2]);
   });
 });
