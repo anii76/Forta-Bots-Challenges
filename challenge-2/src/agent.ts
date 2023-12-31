@@ -1,9 +1,7 @@
 import { Finding, HandleTransaction, TransactionEvent, getEthersProvider, ethers } from "forta-agent";
-import { Interface } from "ethers/lib/utils";
-import { UNISWAP_FACTORY, SWAP_EVENT, UNISWAP_POOL_ABI } from "./constants";
-const IUniswapV3Pool = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json");
+import { UNISWAP_FACTORY, SWAP_EVENT, UNISWAP_POOL_ABI, POOL_INIT_CODE_HASH } from "./constants";
+import { Interface, AbiCoder, solidityKeccak256 } from "ethers/lib/utils";
 import { getCreate2Address } from "@ethersproject/address";
-import { POOL_INIT_CODE_HASH } from "@uniswap/v3-sdk";
 import { createFinding } from "./findings";
 import { LRUCache } from "lru-cache";
 
@@ -14,30 +12,27 @@ const cache: LRUCache<string, boolean> = new LRUCache(options);
 // Ethers provider
 const ethersProvider = getEthersProvider();
 
-const IUNISWAPV3POOL = new Interface(UNISWAP_POOL_ABI);
-
 const verifyPoolAddress = async (
-  //PoolAbi must be an input as well
+  poolAbi: string | string[],
   poolAddress: string,
-  block: number,
   factoryAddress: string,
   initHashCode: string,
+  block: number,
   provider: ethers.providers.JsonRpcProvider,
   cache: LRUCache<string, boolean>
 ): Promise<boolean> => {
-  //make a function to get poolData like : https://github.com/NethermindEth/Forta-Agents/blob/3c6e6f8aac447d2afb5e17e4bb0851a582c014c0/PancakeSwap-Bots/Large-LP-Deposit-Withdrawal/src/pool.fetcher.ts
   if (cache.has(poolAddress)) return cache.get(poolAddress) as boolean;
 
-  const poolContract = new ethers.Contract(poolAddress, IUNISWAPV3POOL, provider);
+  const poolContract = new ethers.Contract(poolAddress, poolAbi, provider);
   const parameters = [
     await poolContract.token0({ blockTag: block }),
     await poolContract.token1({ blockTag: block }),
     await poolContract.fee({ blockTag: block }),
-  ]; //this is considered one call
-  console.log(parameters);
-  const abiCoder = new ethers.utils.AbiCoder();
+  ];
+
+  const abiCoder = new AbiCoder();
   const encodedParams = abiCoder.encode(["address", "address", "uint24"], parameters);
-  const salt = ethers.utils.solidityKeccak256(["bytes"], [encodedParams]);
+  const salt = solidityKeccak256(["bytes"], [encodedParams]);
 
   // Compute the correspondant address
   const computedAddress = getCreate2Address(factoryAddress, salt, initHashCode);
@@ -51,8 +46,9 @@ const verifyPoolAddress = async (
   return isValid;
 };
 
-export function provideHandleTransaction( //PoolAbi must be an input as well
+export function provideHandleTransaction(
   swapEventAbi: string,
+  uniswapPoolAbi: string | string[],
   factoryAddress: string,
   initHashCode: string,
   provider: ethers.providers.JsonRpcProvider,
@@ -69,19 +65,18 @@ export function provideHandleTransaction( //PoolAbi must be an input as well
     for (const swap of swaps) {
       //Verify is swap is valid (from UniswapV3)
       let isValid: boolean;
-      console.log(txEvent.block.number);
 
       try {
         isValid = await verifyPoolAddress(
+          uniswapPoolAbi,
           swap.address,
-          txEvent.block.number,
           factoryAddress,
           initHashCode,
+          txEvent.block.number,
           provider,
           cache
         );
       } catch (error) {
-        console.log(error);
         return findings;
       }
 
@@ -95,5 +90,12 @@ export function provideHandleTransaction( //PoolAbi must be an input as well
 }
 
 export default {
-  handleTransaction: provideHandleTransaction(SWAP_EVENT, UNISWAP_FACTORY, POOL_INIT_CODE_HASH, ethersProvider, cache),
+  handleTransaction: provideHandleTransaction(
+    SWAP_EVENT,
+    UNISWAP_POOL_ABI,
+    UNISWAP_FACTORY,
+    POOL_INIT_CODE_HASH,
+    ethersProvider,
+    cache
+  ),
 };
