@@ -2,7 +2,7 @@
 
 ## Description
 
-This agent detects UniswapV3 Swap events.
+This bot detects UniswapV3 Swap events.
 
 ## Supported Chains
 
@@ -13,7 +13,7 @@ This agent detects UniswapV3 Swap events.
 
 ## Alerts
 
-Describe each of the type of alerts fired by this agent
+Describe each of the type of alerts fired by this bot
 
 - UniswapV3-Swap
   - Fired when a transaction contains a UniswapV3 swap event.
@@ -28,7 +28,7 @@ Describe each of the type of alerts fired by this agent
 
 ## Test Data
 
-The agent behaviour can be verified with the following transactions:
+The bot behaviour can be verified with the following transactions:
 
 - 0xc1d9d14dfc866ec0c8d40cb8249b0886bdf3ccec57c500d2b67b839f974884a8 (Ethereum)
 - 0x58da2995b04299a4a463be3091c4ab791bd9a1d978805bc0f750c220e9208528 (Polygon)
