@@ -30,7 +30,7 @@ export const addCallToPool = (
     });
 };
 
-export const createMockPoolAddress = (factoryAddress: string, initHashCode: string, parameters: any[]) => {
+export const computePoolAddress = (factoryAddress: string, initHashCode: string, parameters: any[]) => {
   const abiCoder = new AbiCoder();
   const encodedParams = abiCoder.encode(["address", "address", "uint24"], parameters);
   const salt = solidityKeccak256(["bytes"], [encodedParams]);
@@ -49,6 +49,7 @@ export const verifyPoolAddress = async (
 ): Promise<boolean> => {
   if (cache.has(poolAddress)) return cache.get(poolAddress) as boolean;
 
+  // Fetch pool data
   const poolContract = new Contract(poolAddress, poolAbi, provider);
   const parameters = [
     await poolContract.token0({ blockTag: block }),
@@ -56,12 +57,8 @@ export const verifyPoolAddress = async (
     await poolContract.fee({ blockTag: block }),
   ];
 
-  const abiCoder = new AbiCoder();
-  const encodedParams = abiCoder.encode(["address", "address", "uint24"], parameters);
-  const salt = solidityKeccak256(["bytes"], [encodedParams]);
-
   // Compute the correspondant address
-  const computedAddress = getCreate2Address(factoryAddress, salt, initHashCode);
+  const computedAddress = computePoolAddress(factoryAddress, initHashCode, parameters);
 
   // Compare the swap event address with the computed one
   const isValid = computedAddress.toLowerCase() === poolAddress.toLowerCase();

@@ -6,7 +6,7 @@ import { LRUCache } from "lru-cache";
 import { provideHandleTransaction } from "./agent";
 import { createFinding } from "./findings";
 import { UNISWAP_FACTORY, SWAP_EVENT, POOL_INIT_CODE_HASH, UNISWAP_POOL_ABI } from "./constants";
-import { addCallToPool, createMockPoolAddress } from "./utils";
+import { addCallToPool, computePoolAddress } from "./utils";
 
 const iface = new utils.Interface(UNISWAP_POOL_ABI);
 
@@ -23,13 +23,13 @@ const mockValidPoolData2 = {
   fee: BigNumber.from(3000),
 };
 
-const mockValidPoolAddress1 = createMockPoolAddress(UNISWAP_FACTORY, POOL_INIT_CODE_HASH, [
+const mockValidPoolAddress1 = computePoolAddress(UNISWAP_FACTORY, POOL_INIT_CODE_HASH, [
   mockValidPoolData1.token0,
   mockValidPoolData1.token1,
   mockValidPoolData1.fee,
 ]);
 
-const mockValidPoolAddress2 = createMockPoolAddress(UNISWAP_FACTORY, POOL_INIT_CODE_HASH, [
+const mockValidPoolAddress2 = computePoolAddress(UNISWAP_FACTORY, POOL_INIT_CODE_HASH, [
   mockValidPoolData2.token0,
   mockValidPoolData2.token1,
   mockValidPoolData2.fee,
