@@ -1,47 +1,14 @@
 import { utils, BigNumber, providers } from "ethers";
-import { getCreate2Address } from "@ethersproject/address";
 import { HandleTransaction } from "forta-agent";
 import { TestTransactionEvent, MockEthersProvider } from "forta-agent-tools/lib/test";
 import { createAddress } from "forta-agent-tools";
 import { LRUCache } from "lru-cache";
 import { provideHandleTransaction } from "./agent";
 import { createFinding } from "./findings";
+import { UNISWAP_FACTORY, SWAP_EVENT, POOL_INIT_CODE_HASH, UNISWAP_POOL_ABI } from "./constants";
+import { addCallToPool, createMockPoolAddress } from "./utils";
 
-const addCallToPool = (mockProvider: MockEthersProvider, block: number, poolAddress: string, poolData: any) => {
-  mockProvider
-    .addCallTo(poolAddress, block, iface, "token0", {
-      inputs: [],
-      outputs: [poolData.token0],
-    })
-    .addCallTo(poolAddress, block, iface, "token1", {
-      inputs: [],
-      outputs: [poolData.token1],
-    })
-    .addCallTo(poolAddress, block, iface, "fee", {
-      inputs: [],
-      outputs: [poolData.fee],
-    });
-};
-
-const createMockPoolAddress = (factoryAddress: string, initHashCode: string, parameters: any[]) => {
-  const abiCoder = new utils.AbiCoder();
-  const encodedParams = abiCoder.encode(["address", "address", "uint24"], parameters);
-  const salt = utils.solidityKeccak256(["bytes"], [encodedParams]);
-  const computedAddress = getCreate2Address(factoryAddress, salt, initHashCode);
-  return computedAddress.toLocaleLowerCase();
-};
-
-const mockFoctoryAddress = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
-const mockInitHashCode = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
-const mockSwapEventAbi =
-  "event Swap(address indexed sender, address indexed recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick)";
-const mockUniswapPoolAbi = [
-  "function token0() external view returns (address)",
-  "function token1() external view returns (address)",
-  "function fee() external view returns (uint24)",
-];
-
-const iface = new utils.Interface(mockUniswapPoolAbi);
+const iface = new utils.Interface(UNISWAP_POOL_ABI);
 
 // Test cases
 const mockValidPoolData1 = {
@@ -56,13 +23,13 @@ const mockValidPoolData2 = {
   fee: BigNumber.from(3000),
 };
 
-const mockValidPoolAddress1 = createMockPoolAddress(mockFoctoryAddress, mockInitHashCode, [
+const mockValidPoolAddress1 = createMockPoolAddress(UNISWAP_FACTORY, POOL_INIT_CODE_HASH, [
   mockValidPoolData1.token0,
   mockValidPoolData1.token1,
   mockValidPoolData1.fee,
 ]);
 
-const mockValidPoolAddress2 = createMockPoolAddress(mockFoctoryAddress, mockInitHashCode, [
+const mockValidPoolAddress2 = createMockPoolAddress(UNISWAP_FACTORY, POOL_INIT_CODE_HASH, [
   mockValidPoolData2.token0,
   mockValidPoolData2.token1,
   mockValidPoolData2.fee,
@@ -119,10 +86,10 @@ describe("UniswapV3 Swaps Detector", () => {
   beforeEach(() => {
     mockProvider = new MockEthersProvider();
     handleTransaction = provideHandleTransaction(
-      mockSwapEventAbi,
-      mockUniswapPoolAbi,
-      mockFoctoryAddress,
-      mockInitHashCode,
+      SWAP_EVENT,
+      UNISWAP_POOL_ABI,
+      UNISWAP_FACTORY,
+      POOL_INIT_CODE_HASH,
       mockProvider as unknown as providers.JsonRpcProvider,
       mockCache
     );
@@ -139,13 +106,13 @@ describe("UniswapV3 Swaps Detector", () => {
   it("returns a finding if there is a valid swap event.", async () => {
     mockTxEvent = new TestTransactionEvent()
       .setBlock(testBlock[0])
-      .addEventLog(mockSwapEventAbi, mockValidPoolAddress1, Object.values(mockSwapArgs1))
-      .addEventLog(mockSwapEventAbi, mockInvalidPoolAddress1, Object.values(mockSwapArgs2));
+      .addEventLog(SWAP_EVENT, mockValidPoolAddress1, Object.values(mockSwapArgs1))
+      .addEventLog(SWAP_EVENT, mockInvalidPoolAddress1, Object.values(mockSwapArgs2));
 
     //valid swap call
-    addCallToPool(mockProvider, testBlock[0], mockValidPoolAddress1, mockValidPoolData1);
+    addCallToPool(mockProvider, testBlock[0], iface, mockValidPoolAddress1, mockValidPoolData1);
     //invalid swap call
-    addCallToPool(mockProvider, testBlock[0], mockInvalidPoolAddress1, mockInvalidPoolData1);
+    addCallToPool(mockProvider, testBlock[0], iface, mockInvalidPoolAddress1, mockInvalidPoolData1);
 
     const findings = await handleTransaction(mockTxEvent);
 
@@ -156,12 +123,12 @@ describe("UniswapV3 Swaps Detector", () => {
   it("returns empty findings if there are no valid swap events.", async () => {
     mockTxEvent = new TestTransactionEvent()
       .setBlock(testBlock[1])
-      .addEventLog(mockSwapEventAbi, mockInvalidPoolAddress2, Object.values(mockSwapArgs1))
-      .addEventLog(mockSwapEventAbi, mockInvalidPoolAddress1, Object.values(mockSwapArgs2));
+      .addEventLog(SWAP_EVENT, mockInvalidPoolAddress2, Object.values(mockSwapArgs1))
+      .addEventLog(SWAP_EVENT, mockInvalidPoolAddress1, Object.values(mockSwapArgs2));
 
     //invalid swap calls
-    addCallToPool(mockProvider, testBlock[1], mockInvalidPoolAddress2, mockInvalidPoolData2);
-    addCallToPool(mockProvider, testBlock[1], mockInvalidPoolAddress1, mockInvalidPoolData1);
+    addCallToPool(mockProvider, testBlock[1], iface, mockInvalidPoolAddress2, mockInvalidPoolData2);
+    addCallToPool(mockProvider, testBlock[1], iface, mockInvalidPoolAddress1, mockInvalidPoolData1);
 
     const findings = await handleTransaction(mockTxEvent);
 
@@ -173,16 +140,16 @@ describe("UniswapV3 Swaps Detector", () => {
   it("returns multiple findings if there are multiple swap events.", async () => {
     mockTxEvent = new TestTransactionEvent()
       .setBlock(testBlock[2])
-      .addEventLog(mockSwapEventAbi, mockValidPoolAddress1, Object.values(mockSwapArgs1))
-      .addEventLog(mockSwapEventAbi, mockValidPoolAddress2, Object.values(mockSwapArgs2))
-      .addEventLog(mockSwapEventAbi, mockInvalidPoolAddress1, Object.values(mockSwapArgs1));
+      .addEventLog(SWAP_EVENT, mockValidPoolAddress1, Object.values(mockSwapArgs1))
+      .addEventLog(SWAP_EVENT, mockValidPoolAddress2, Object.values(mockSwapArgs2))
+      .addEventLog(SWAP_EVENT, mockInvalidPoolAddress1, Object.values(mockSwapArgs1));
 
     //valid swap calls
-    addCallToPool(mockProvider, testBlock[2], mockValidPoolAddress1, mockValidPoolData1);
-    addCallToPool(mockProvider, testBlock[2], mockValidPoolAddress2, mockValidPoolData2);
+    addCallToPool(mockProvider, testBlock[2], iface, mockValidPoolAddress1, mockValidPoolData1);
+    addCallToPool(mockProvider, testBlock[2], iface, mockValidPoolAddress2, mockValidPoolData2);
 
     //invalid swap call
-    addCallToPool(mockProvider, testBlock[2], mockInvalidPoolAddress1, mockInvalidPoolData1);
+    addCallToPool(mockProvider, testBlock[2], iface, mockInvalidPoolAddress1, mockInvalidPoolData1);
 
     const findings = await handleTransaction(mockTxEvent);
 
