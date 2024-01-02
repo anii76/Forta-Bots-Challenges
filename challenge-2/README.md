@@ -25,6 +25,7 @@ Describe each of the type of alerts fired by this bot
     - `recipient` : swap reciver.
     - `amount0` : the amount of token0 swapped.
     - `amount1` : the amount of token1 recieved.
+    - `liquidity`: pool's liquidity.
 
 ## Test Data
 

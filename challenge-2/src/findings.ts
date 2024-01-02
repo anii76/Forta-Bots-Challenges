@@ -15,6 +15,7 @@ export const createFinding = (poolAddress: string, args: any): Finding => {
       amount1: amount1.toString(),
       sender: sender,
       recipient: recipient,
+      liquidity: liquidity,
     },
   });
 };
