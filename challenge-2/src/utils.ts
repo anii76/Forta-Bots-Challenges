@@ -51,11 +51,11 @@ export const verifyPoolAddress = async (
 
   // Fetch pool data
   const poolContract = new Contract(poolAddress, poolAbi, provider);
-  const parameters = [
-    await poolContract.token0({ blockTag: block }),
-    await poolContract.token1({ blockTag: block }),
-    await poolContract.fee({ blockTag: block }),
-  ];
+  const parameters = await Promise.all([
+    poolContract.token0({ blockTag: block }),
+    poolContract.token1({ blockTag: block }),
+    poolContract.fee({ blockTag: block }),
+  ]);
 
   // Compute the correspondant address
   const computedAddress = computePoolAddress(factoryAddress, initHashCode, parameters);
