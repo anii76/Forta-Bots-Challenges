@@ -6,7 +6,30 @@ import { LRUCache } from "lru-cache";
 import { provideHandleTransaction } from "./agent";
 import { createFinding } from "./findings";
 import { UNISWAP_FACTORY, SWAP_EVENT, POOL_INIT_CODE_HASH, UNISWAP_POOL_ABI } from "./constants";
-import { addCallToPool, computePoolAddress } from "./utils";
+import { computePoolAddress } from "./utils";
+import { Interface } from "ethers/lib/utils";
+
+const addCallToPool = (
+  mockProvider: MockEthersProvider,
+  block: number,
+  iface: Interface,
+  poolAddress: string,
+  poolData: any
+) => {
+  mockProvider
+    .addCallTo(poolAddress, block, iface, "token0", {
+      inputs: [],
+      outputs: [poolData.token0],
+    })
+    .addCallTo(poolAddress, block, iface, "token1", {
+      inputs: [],
+      outputs: [poolData.token1],
+    })
+    .addCallTo(poolAddress, block, iface, "fee", {
+      inputs: [],
+      outputs: [poolData.fee],
+    });
+};
 
 const iface = new utils.Interface(UNISWAP_POOL_ABI);
 
