@@ -1,7 +1,7 @@
 import { Finding, FindingSeverity, FindingType } from "forta-agent";
 
 export const createFinding = (poolAddress: string, args: any): Finding => {
-  const { sender, recipient, amount0, amount1, sqrtPriceX96, liquidity, tick } = args;
+  const { sender, recipient, amount0, amount1, liquidity } = args;
   return Finding.fromObject({
     name: "UniswapV3 Swaps Detector",
     description: "New swap detected",
@@ -15,7 +15,7 @@ export const createFinding = (poolAddress: string, args: any): Finding => {
       amount1: amount1.toString(),
       sender: sender,
       recipient: recipient,
-      liquidity: liquidity,
+      liquidity: liquidity.toString(),
     },
   });
 };

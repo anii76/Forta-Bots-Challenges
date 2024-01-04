@@ -34,12 +34,12 @@
   },
   "dependencies": {
     "forta-agent": "^0.1.48",
-    "forta-agent-tools": "^3.2.12",
     "lru-cache": "^10.1.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.10",
     "@types/nodemon": "^1.19.0",
+    "forta-agent-tools": "^3.2.12",
     "jest": "^29.7.0",
     "nodemon": "^3.0.1",
     "prettier": "^3.1.1",
