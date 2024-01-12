@@ -1,22 +1,21 @@
 import {
   BlockEvent,
   Finding,
-  Initialize,
   HandleBlock,
-  HandleTransaction,
-  HandleAlert,
-  AlertEvent,
-  TransactionEvent,
   FindingSeverity,
   FindingType,
   getEthersProvider,
   getAlerts,
   AlertQueryOptions,
+  AlertEvent,
+  HandleAlert,
+  Alert,
 } from "forta-agent";
 import { NetworkManager } from "forta-agent-tools";
 import { providers, BigNumber, Contract } from "ethers";
 import { Interface } from "ethers/lib/utils";
 import { LRUCache } from "lru-cache";
+import { getEscrowBalance } from "./utils";
 
 const iface = new Interface([
   "function totalSupply() external view returns (uint256)",
@@ -48,14 +47,19 @@ export const provideHandleBlock =
     const { chainId } = await provider.getNetwork();
 
     if (chainId == 1) {
+      console.log(blockEvent.blockNumber);
       const daiContract = new Contract(DAI_L1_ADDRESS, iface, provider);
-      const escrowBalance1 = BigNumber.from(
-        await daiContract.balanceOf(ESCROW_ARBITRUM_ADDRESS, { blockTag: blockEvent.blockNumber })
-      ).toString();
-      const escrowBalance2 = BigNumber.from(
-        await daiContract.balanceOf(ESCROW_OPTIMISM_ADDRESS, { blockTag: blockEvent.blockNumber })
-      ).toString();
 
+      const escrowBalance1: BigNumber = await daiContract.balanceOf(ESCROW_ARBITRUM_ADDRESS, {
+        blockTag: blockEvent.blockNumber,
+      });
+      const escrowBalance2: BigNumber = await daiContract.balanceOf(ESCROW_OPTIMISM_ADDRESS, {
+        blockTag: blockEvent.blockNumber,
+      });
+
+      //store values for next usage ? [last alert]
+
+      //const { escrowBalance1, escrowBalance2 } = await getEscrowBalance(iface, provider, blockEvent.blockNumber)
       findings.push(
         Finding.fromObject({
           name: "Escrow Account Balance",
@@ -71,11 +75,9 @@ export const provideHandleBlock =
       );
     } else {
       const daiContract = new Contract(DAI_L2_ADDRESS, iface, provider);
-      const l2DaiSupply = BigNumber.from(
-        await daiContract.totalSupply({ blockTag: blockEvent.blockNumber })
-      ).toString();
+      const l2DaiSupply = await daiContract.totalSupply({ blockTag: blockEvent.blockNumber });
 
-      const query: AlertQueryOptions = {
+      /*const query: AlertQueryOptions = {
         botIds: ["0xdb5f76edad8195236876f0ddf13c2e6b3ac807e5b2b6a9d8b7795a8c0fa59f22"],
         alertId: "FORTA-6",
         first: 1,
@@ -84,40 +86,42 @@ export const provideHandleBlock =
 
       results.alerts.forEach((alert) => {
         const escrowBalance = chainId == 10 ? alert.metadata.balanceArbitrum : alert.metadata.balanceOptimism;
-      });
+      });*/
 
-      findings.push(
-        Finding.fromObject({
-          name: "MakerDOA Invariant violated",
-          description: ``,
-          alertId: "FORTA-7",
-          severity: FindingSeverity.Info,
-          type: FindingType.Info,
-          metadata: {
-            network: blockEvent.network.toString(),
-            l2DaiSupply: l2DaiSupply,
-          },
-        })
-      );
+      const escrowBalance = 75447518676562565558777777; //mock value to test
+
+      if (l2DaiSupply > escrowBalance)
+        findings.push(
+          Finding.fromObject({
+            name: "MakerDOA Invariant violated",
+            description: `invariant violated`,
+            alertId: "FORTA-7",
+            severity: FindingSeverity.Info,
+            type: FindingType.Info,
+            metadata: {
+              network: blockEvent.network.toString(),
+              l2DaiSupply: l2DaiSupply.toString(),
+            },
+          })
+        );
     }
-    //cache balance ?
 
     //get alert now ? I guess then compare balances ? [get previous balance & compare them :)) & if this is the first call (without cache then pass)]
 
     return findings;
   };
 
-/*export const provideHandleAlert =
-  (networkManager: NetworkManager<NetworkData>, provider: providers.Provider): HandleAlert =>
+export const provideHandleAlert =
+  (provider: providers.Provider): HandleAlert =>
   async (alertEvent: AlertEvent) => {
     const findings: Finding[] = [];
 
     return findings;
-  };*/
+  };
 
 export default {
   handleBlock: provideHandleBlock(provider),
-  //handleAlert: provideHandleAlert(networkManager, provider),
+  //handleAlert: provideHandleAlert(provider),
 };
 
 /**

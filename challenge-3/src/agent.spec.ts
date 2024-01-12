@@ -1,74 +1,112 @@
-import {
-  FindingType,
-  FindingSeverity,
-  Finding,
-  HandleTransaction,
-  createTransactionEvent,
-  ethers,
-} from "forta-agent";
-import agent, {
-  ERC20_TRANSFER_EVENT,
-  TETHER_ADDRESS,
-  TETHER_DECIMALS,
-} from "./agent";
+import { createAddress } from "forta-agent-tools";
+import { TestBlockEvent, MockEthersProvider } from "forta-agent-tools/lib/test";
+import { Finding, FindingSeverity, FindingType, HandleBlock } from "forta-agent";
+import { utils, BigNumber, providers } from "ethers";
+import { BALANCE_ABI, TOTAL_SUPPLY_ABI } from "./constants";
+import { provideHandleBlock } from "./agent";
 
-describe("high tether transfer agent", () => {
-  let handleTransaction: HandleTransaction;
-  const mockTxEvent = createTransactionEvent({} as any);
+const iface: utils.Interface = new utils.Interface([
+  "function totalSupply() external view returns (uint256)",
+  "function balanceOf(address account) external view returns (uint256)",
+]);
+const mockDaiL1Address = createAddress("0x1777");
+const mockDaiL2Address = createAddress("0x2777");
+const mockArbitrumEscrow = createAddress("0x3888");
+const mockOptimismEscrow = createAddress("0x4777");
 
-  beforeAll(() => {
-    handleTransaction = agent.handleTransaction;
+//fake supply & fake balances
+const mockBalanceArbitrum = BigNumber.from(7634);
+const mockBalanceOptimism = BigNumber.from(3516);
+
+//valid supply
+const mockL2Supply1 = BigNumber.from(777);
+
+//invalid supply
+const mockL2Supply2 = BigNumber.from(777777777);
+
+//mock block num & chainId
+
+//fake call to
+const addCallToPool = (
+  mockProvider: MockEthersProvider,
+  block: number,
+  iface: utils.Interface,
+  tokenAddress: string,
+  func: string
+) => {
+  mockProvider.addCallTo(tokenAddress, block, iface, "func", {
+    inputs: [],
+    outputs: [func],
+  });
+};
+
+describe("MakerDAO Invariant Detector", () => {
+  let handleBlock: HandleBlock;
+  let mockBlockEvent: TestBlockEvent;
+  let mockProvider: MockEthersProvider;
+
+  beforeEach(() => {
+    mockProvider = new MockEthersProvider();
+    handleBlock = provideHandleBlock(mockProvider as any);
+    mockProvider.call.mockClear();
   });
 
-  describe("handleTransaction", () => {
-    it("returns empty findings if there are no Tether transfers", async () => {
-      mockTxEvent.filterLog = jest.fn().mockReturnValue([]);
+  //tests get balance
+  it("returns escrow balances on l1", async () => {
+    mockBlockEvent = new TestBlockEvent().setNumber(10);
 
-      const findings = await handleTransaction(mockTxEvent);
+    mockProvider.setNetwork(1);
 
-      expect(findings).toStrictEqual([]);
-      expect(mockTxEvent.filterLog).toHaveBeenCalledTimes(1);
-      expect(mockTxEvent.filterLog).toHaveBeenCalledWith(
-        ERC20_TRANSFER_EVENT,
-        TETHER_ADDRESS
-      );
-    });
+    mockProvider
+      .addCallTo(mockDaiL1Address, 10, iface, "balanceOf", {
+        inputs: [mockArbitrumEscrow],
+        outputs: [mockBalanceArbitrum],
+      })
+      .addCallTo(mockDaiL1Address, 10, iface, "balanceOf", {
+        inputs: [mockOptimismEscrow],
+        outputs: [mockBalanceOptimism],
+      });
 
-    it("returns a finding if there is a Tether transfer over 10,000", async () => {
-      const mockTetherTransferEvent = {
-        args: {
-          from: "0xabc",
-          to: "0xdef",
-          value: ethers.BigNumber.from("20000000000"), //20k with 6 decimals
+    const findings = await handleBlock(mockBlockEvent);
+    expect(findings).toStrictEqual([
+      Finding.fromObject({
+        name: "Escrow Account Balance",
+        description: `Escrow Account balances `,
+        alertId: "FORTA-6",
+        severity: FindingSeverity.Info,
+        type: FindingType.Info,
+        metadata: {
+          balanceArbitrum: mockBalanceArbitrum.toString(),
+          balanceOptimism: mockBalanceOptimism.toString(),
         },
-      };
-      mockTxEvent.filterLog = jest
-        .fn()
-        .mockReturnValue([mockTetherTransferEvent]);
-
-      const findings = await handleTransaction(mockTxEvent);
-
-      const normalizedValue = mockTetherTransferEvent.args.value.div(
-        10 ** TETHER_DECIMALS
-      );
-      expect(findings).toStrictEqual([
-        Finding.fromObject({
-          name: "High Tether Transfer",
-          description: `High amount of USDT transferred: ${normalizedValue}`,
-          alertId: "FORTA-1",
-          severity: FindingSeverity.Low,
-          type: FindingType.Info,
-          metadata: {
-            to: mockTetherTransferEvent.args.to,
-            from: mockTetherTransferEvent.args.from,
-          },
-        }),
-      ]);
-      expect(mockTxEvent.filterLog).toHaveBeenCalledTimes(1);
-      expect(mockTxEvent.filterLog).toHaveBeenCalledWith(
-        ERC20_TRANSFER_EVENT,
-        TETHER_ADDRESS
-      );
-    });
+      }),
+    ]);
   });
+
+  //test if there is no violation of the invariant
+  it("returns empty findings if the invariant is not violated", async () => {
+    mockBlockEvent = new TestBlockEvent().setNumber(10);
+
+    mockProvider.setNetwork(10);
+
+    //Add Alert logic
+
+    mockProvider.addCallTo(mockDaiL2Address, 10, iface, "totalSupply", {
+      inputs: [],
+      outputs: [mockL2Supply1],
+    });
+
+    const findings = await handleBlock(mockBlockEvent);
+
+    expect(findings).toStrictEqual([]);
+  });
+
+  //test if the invariant have been violated
+  it("", async () => {});
 });
+
+//(sol 1)
+//using Alerts ? => to get my own bot alerts ?
+//So I can check for blocks when escrow mines a new block ? => how would I know
+//---> do ppl use
+//? check eth network balance
