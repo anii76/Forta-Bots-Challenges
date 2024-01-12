@@ -36,7 +36,6 @@ const mockAlertQuery: AlertQueryOptions = {
   first: 1,
 };
 
-
 //mock findings
 const mockEscrowFinding = createEscrowFinding(mockBalanceArbitrum.toString(), mockBalanceOptimism.toString());
 const mockInvariantFindingArbitrum = createInvariantFinding(
