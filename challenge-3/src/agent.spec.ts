@@ -40,7 +40,7 @@ const addCallToPool = (
   });
 };
 
-describe("MakerDAO Invariant Detector", () => {
+describe("MakerDAO Bridge Invariant Check", () => {
   let handleBlock: HandleBlock;
   let mockBlockEvent: TestBlockEvent;
   let mockProvider: MockEthersProvider;
@@ -102,7 +102,40 @@ describe("MakerDAO Invariant Detector", () => {
   });
 
   //test if the invariant have been violated
-  it("", async () => {});
+  it("returns empty findings if the invariant has been violated on Optimism", async () => {
+    mockBlockEvent = new TestBlockEvent().setNumber(10);
+
+    mockProvider.setNetwork(10);
+
+    //Add Alert logic
+
+    mockProvider.addCallTo(mockDaiL2Address, 10, iface, "totalSupply", {
+      inputs: [],
+      outputs: [mockL2Supply2],
+    });
+
+    const findings = await handleBlock(mockBlockEvent);
+
+    expect(findings.length).toStrictEqual(1);
+  });
+
+  //test if the invariant have been violated
+  it("returns empty findings if the invariant has been violated on Arbitrum", async () => {
+    mockBlockEvent = new TestBlockEvent().setNumber(10);
+
+    mockProvider.setNetwork(42161);
+
+    //Add Alert logic
+
+    mockProvider.addCallTo(mockDaiL2Address, 10, iface, "totalSupply", {
+      inputs: [],
+      outputs: [mockL2Supply1],
+    });
+
+    const findings = await handleBlock(mockBlockEvent);
+
+    expect(findings).toStrictEqual([]);
+  });
 });
 
 //(sol 1)

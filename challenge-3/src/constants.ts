@@ -1,5 +1,6 @@
-export const BOT_ID = "";
-export const CHAIN_ID = {
+export const BOT_ID = "0xdb5f76edad8195236876f0ddf13c2e6b3ac807e5b2b6a9d8b7795a8c0fa59f22";
+export const CHAIN_IDS = {
+  Ethereum: 1,
   Optimism: 10,
   Arbitrum: 42161,
 };
