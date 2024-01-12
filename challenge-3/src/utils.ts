@@ -1,51 +1,59 @@
 import { Interface } from "@ethersproject/abi";
 import { BigNumber, Contract, providers } from "ethers";
 import { Alert, AlertQueryOptions, AlertsResponse, Finding, GetAlerts } from "forta-agent";
-import { DAI_L1_ADDRESS, DAI_L2_ADDRESS, ESCROW_ARBITRUM_ADDRESS, ESCROW_OPTIMISM_ADDRESS } from "./constants";
+import { CHAIN_IDS } from "./constants";
 import * as fs from "fs";
-import { createInvariantFinding } from "./findings";
+
+export const getEscrowBalances = async (
+  iface: Interface,
+  provider: providers.Provider,
+  blockNumber: number,
+  l1DaiAddress: string,
+  escrowArbitrumAddress: string,
+  escrowOptimismAddress: string
+): Promise<any> => {
+  const daiContract = new Contract(l1DaiAddress, iface, provider);
+
+  const balanceArbitrum: BigNumber = await daiContract.balanceOf(escrowArbitrumAddress, { blockTag: blockNumber });
+  const balanceOptimism: BigNumber = await daiContract.balanceOf(escrowOptimismAddress, { blockTag: blockNumber });
+
+  return { balanceArbitrum: balanceArbitrum, balanceOptimism: balanceOptimism };
+};
 
 export const verifyInvariant = async (
+  l2DaiAddress: string,
   chainId: number,
   alert: Alert,
   iface: Interface,
   provider: providers.Provider,
   blockNumber: number
-) => {
-  //chainId is diffirent?
-  const escrowBalance = chainId == 42161 ? alert.metadata.balanceArbitrum : alert.metadata.balanceOptimism;
-
-  const daiContract = new Contract(DAI_L2_ADDRESS, iface, provider);
-  const l2DaiSupply = await daiContract.totalSupply({ blockTag: blockNumber });
-
-  //verify if invariant is violated
-  if (l2DaiSupply > escrowBalance) createInvariantFinding({l2DaiSupply: l2DaiSupply, network: chainId});
-};
-
-export const getEscrowBalances = async (
-  iface: Interface,
-  provider: providers.Provider,
-  blockNumber: number
 ): Promise<any> => {
-  const daiContract = new Contract(DAI_L1_ADDRESS, iface, provider);
+  const escrowBalance: BigNumber =
+    chainId == CHAIN_IDS.Arbitrum ? alert.metadata.balanceArbitrum : alert.metadata.balanceOptimism;
+  const daiContract = new Contract(l2DaiAddress, iface, provider);
+  const l2DaiSupply: BigNumber = await daiContract.totalSupply({ blockTag: blockNumber });
 
-  const escrowBalance1: BigNumber = await daiContract.balanceOf(ESCROW_ARBITRUM_ADDRESS, { blockTag: blockNumber });
-  const escrowBalance2: BigNumber = await daiContract.balanceOf(ESCROW_OPTIMISM_ADDRESS, { blockTag: blockNumber });
-
-  return { balanceArbitrum: escrowBalance1, balanceOptimism: escrowBalance2 };
+  //returns if invariant is violated or not
+  return {
+    isViolated: l2DaiSupply.gt(escrowBalance),
+    escrowBalance: escrowBalance,
+    l2DaiSupply: l2DaiSupply,
+  };
 };
 
 //store alerts locally
 export const storeAlerts = async (findings: Finding[], botId: string) => {
   let alerts: any[] = [];
   findings.forEach((finding) => {
-    let alert: any = finding;
+    let alert: any = Object.assign({}, finding);
     alert["botId"] = botId;
     alerts.push(alert);
   });
 
-  //write to json file
+  //write to json file (can be improved)
+  //currently writing only last alert.
   fs.writeFileSync("alerts.json", JSON.stringify(alerts), "utf-8");
+  //fs.appendFile("alerts.json", JSON.stringify(alerts), () => {});
 };
 
 //custom getAlerts
@@ -58,13 +66,13 @@ export const getAlerts: GetAlerts = async (query: AlertQueryOptions): Promise<Al
 
     const alerts: any[] = JSON.parse(jsonContent);
     results = alerts.filter((alert) => {
-      alert.botId == query.botIds && alert.alertId == query.alertId;
+      return query.botIds?.includes(alert.botId) && alert.alertId == query.alertId;
     });
 
-    //last alert ?
+    //last alert by timestamp
     results =
       query.first == 1
-        ? results.reduce((max, current) => (current.timestamp > max.timestamp ? current : max), results[0])
+        ? [results.reduce((max, current) => (current.timestamp > max.timestamp ? current : max), results[0])]
         : results;
   } catch (error) {}
 

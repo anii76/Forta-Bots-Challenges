@@ -1,31 +1,32 @@
 import { Finding, FindingSeverity, FindingType } from "forta-agent";
+import { CHAIN_IDS } from "./constants";
 
-export const createEscrowFinding = (escrowBalances: any): Finding => {
-  const { balanceArbitrum, balanceOptimism } = escrowBalances;
+export const createEscrowFinding = (balanceArbitrum: string, balanceOptimism: string): Finding => {
   return Finding.fromObject({
-    name: "MakerDAO's Bridge Invariant ",
-    description: "New block mined",
-    alertId: "l1-escrow-balance",
+    name: "MakerDAO's L1 escrow balance of Arbitrum & Optimism",
+    description: `Arbitrum's escrow balance ${balanceArbitrum} - Optimism's escrow balance ${balanceOptimism}`,
+    alertId: "L1-Escrow-Balance",
     severity: FindingSeverity.Info,
     type: FindingType.Info,
     metadata: {
-      balanceArbitrum: balanceArbitrum.toString(),
-      balanceOptimism: balanceOptimism.toString(),
+      balanceArbitrum: balanceArbitrum,
+      balanceOptimism: balanceOptimism,
     },
   });
 };
 
-export const createInvariantFinding = (args: any): Finding => {
-  const { network, l2DaiSupply } = args;
+export const createInvariantFinding = (escrowBalance: string, l2DaiSupply: string, network: number): Finding => {
+  const networkName = network == CHAIN_IDS.Arbitrum ? "Arbitrum" : "Optimism";
   return Finding.fromObject({
-    name: "MakerDOA Bridge Invariant violated",
-    description: `invariant violated`,
-    alertId: "makerDAO-invariant-violated",
-    severity: FindingSeverity.Info,
-    type: FindingType.Info,
+    name: "MakerDOA Bridge Invariant Violated",
+    description: `L2Dai.totalSupply() : ${l2DaiSupply} > L1Dai.balanceOf(${networkName}Escrow): ${escrowBalance}`,
+    alertId: "MakerDAO-Invariant-Violated",
+    severity: FindingSeverity.High,
+    type: FindingType.Suspicious,
     metadata: {
       network: network.toString(),
-      l2DaiSupply: l2DaiSupply.toString(),
+      l2DaiSupply: l2DaiSupply,
+      escrowBalance: escrowBalance,
     },
   });
 };
