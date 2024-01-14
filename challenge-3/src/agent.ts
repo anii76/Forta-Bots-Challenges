@@ -24,7 +24,11 @@ const query: AlertQueryOptions = {
   first: 1,
 };
 
-//use multicall to request both token balances in one call
+// store previous balances
+let previousBalances = {
+  balanceArbitrum: BigNumber.from(0),
+  balanceOptimism: BigNumber.from(0),
+};
 
 export const provideHandleBlock =
   (provider: providers.Provider, iface: Interface, addresses: Addresses, getAlerts: GetAlerts): HandleBlock =>
@@ -46,7 +50,20 @@ export const provideHandleBlock =
           addresses.escrowOptimism
         );
 
-        findings.push(createEscrowFinding(balanceArbitrum.toString(), balanceOptimism.toString()));
+        //check previous balances
+        if (
+          previousBalances.balanceArbitrum.eq(balanceArbitrum) &&
+          previousBalances.balanceOptimism.eq(balanceOptimism)
+        )
+          return findings;
+        else {
+          //update balances
+          previousBalances.balanceArbitrum = balanceArbitrum;
+          previousBalances.balanceOptimism = balanceOptimism;
+
+          //fire alert when balances have changed
+          findings.push(createEscrowFinding(balanceArbitrum.toString(), balanceOptimism.toString()));
+        }
       } else if (chainId == CHAIN_IDS.Arbitrum || chainId == CHAIN_IDS.Optimism) {
         //Get Alerts
         const results = await getAlerts(query);
