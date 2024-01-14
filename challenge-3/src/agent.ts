@@ -7,7 +7,7 @@ import {
   GetAlerts,
   getAlerts,
 } from "forta-agent";
-import { providers, BigNumber, Contract } from "ethers";
+import { providers, BigNumber } from "ethers";
 import { Interface } from "ethers/lib/utils";
 import { Addresses, getEscrowBalances, verifyInvariant } from "./utils";
 import { BALANCE_ABI, TOTAL_SUPPLY_ABI, BOT_ID, CHAIN_IDS, ADDRESSES, L1_ALERT_ID } from "./constants";

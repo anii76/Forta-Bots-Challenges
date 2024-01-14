@@ -1,6 +1,6 @@
 import { Interface } from "@ethersproject/abi";
 import { BigNumber, Contract, providers } from "ethers";
-import { Alert, AlertQueryOptions, AlertsResponse, Finding, GetAlerts } from "forta-agent";
+import { Alert } from "forta-agent";
 import { CHAIN_IDS } from "./constants";
 
 export type Addresses = {

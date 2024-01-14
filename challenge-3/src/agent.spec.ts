@@ -1,7 +1,7 @@
 import { createAddress } from "forta-agent-tools";
 import { TestBlockEvent, MockEthersProvider } from "forta-agent-tools/lib/test";
 import { Alert, AlertQueryOptions, AlertsResponse, Finding, GetAlerts, HandleBlock } from "forta-agent";
-import { utils, BigNumber, providers } from "ethers";
+import { utils, BigNumber } from "ethers";
 import { BALANCE_ABI, BOT_ID, CHAIN_IDS, TOTAL_SUPPLY_ABI } from "./constants";
 import { provideHandleBlock } from "./agent";
 import { createEscrowFinding, createInvariantFinding } from "./findings";
