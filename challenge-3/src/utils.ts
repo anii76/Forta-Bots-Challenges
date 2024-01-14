@@ -19,7 +19,7 @@ export const getEscrowBalances = async (
   escrowArbitrumAddress: string,
   escrowOptimismAddress: string
 ): Promise<any> => {
-  //use multicall to request both token balances in one call
+
   const daiContract = new Contract(l1DaiAddress, iface, provider);
 
   const balanceArbitrum: BigNumber = await daiContract.balanceOf(escrowArbitrumAddress, { blockTag: blockNumber });
