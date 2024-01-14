@@ -79,17 +79,6 @@ const mockGetAlerts: GetAlerts = async (query: AlertQueryOptions): Promise<Alert
   };
 };
 
-//mockAlertRespone
-const mockAlertResponse : AlertsResponse = {
-  alerts: [mockAlert(mockEscrowFinding)],
-  pageInfo: {
-    hasNextPage: false,
-  },
-}
-
-const mockGetAlerts1 = jest.fn();
-
-
 describe("MakerDAO's Bridge Invariant Check", () => {
   let handleBlock: HandleBlock;
   let mockBlockEvent: TestBlockEvent;
@@ -116,13 +105,13 @@ describe("MakerDAO's Bridge Invariant Check", () => {
         outputs: [mockBalanceOptimism],
       });
 
-      handleBlock = provideHandleBlock(mockProvider as any, iface, mockAddresses, mockGetAlerts1);
+    handleBlock = provideHandleBlock(mockProvider as any, iface, mockAddresses, mockGetAlerts);
 
     const findings = await handleBlock(mockBlockEvent);
     expect(findings).toStrictEqual([mockEscrowFinding]);
-    
-    findings.forEach(finding => {
-      mockAlerts.push(mockAlert(finding))
+
+    findings.forEach((finding) => {
+      mockAlerts.push(mockAlert(finding));
     });
   });
 
@@ -139,7 +128,6 @@ describe("MakerDAO's Bridge Invariant Check", () => {
     });
 
     handleBlock = provideHandleBlock(mockProvider as any, iface, mockAddresses, mockGetAlerts);
-    mockGetAlerts1.mockResolvedValueOnce(mockAlertResponse)
 
     const findings = await handleBlock(mockBlockEvent);
 
@@ -158,7 +146,6 @@ describe("MakerDAO's Bridge Invariant Check", () => {
     });
 
     handleBlock = provideHandleBlock(mockProvider as any, iface, mockAddresses, mockGetAlerts);
-    mockGetAlerts1.mockResolvedValueOnce(mockAlertResponse)
 
     const findings = await handleBlock(mockBlockEvent);
 
@@ -178,7 +165,6 @@ describe("MakerDAO's Bridge Invariant Check", () => {
     });
 
     handleBlock = provideHandleBlock(mockProvider as any, iface, mockAddresses, mockGetAlerts);
-    mockGetAlerts1.mockResolvedValueOnce(mockAlertResponse)
 
     const findings = await handleBlock(mockBlockEvent);
 
@@ -198,32 +184,41 @@ describe("MakerDAO's Bridge Invariant Check", () => {
     });
 
     handleBlock = provideHandleBlock(mockProvider as any, iface, mockAddresses, mockGetAlerts);
-    //mockGetAlerts1.mockResolvedValueOnce(mockAlertResponse)
 
     const findings = await handleBlock(mockBlockEvent);
 
     expect(findings).toStrictEqual([mockInvariantFindingArbitrum]);
   });
 
-    //test if the invariant have been violated
-    it("returns a finding if the invariant has been violated on both Arbitrum & Optimism", async () => {
-      mockBlockEvent = new TestBlockEvent().setNumber(mockBlockNumber);
-  
-      mockProvider = new MockEthersProvider();
-      mockProvider.setNetwork(CHAIN_IDS.Arbitrum);
-  
-      mockProvider.addCallTo(mockAddresses.l2Dai, mockBlockNumber, iface, "totalSupply", {
-        inputs: [],
-        outputs: [mockL2Supply2],
-      });
-  
-      handleBlock = provideHandleBlock(mockProvider as any, iface, mockAddresses, mockGetAlerts);
-      //mockGetAlerts1.mockResolvedValueOnce(mockAlertResponse)
-  
-      const findings = await handleBlock(mockBlockEvent);
-  
-      expect(findings).toStrictEqual([mockInvariantFindingArbitrum]);
+  //test if the invariant have been violated
+  it("returns findings if the invariant has been violated on both Arbitrum & Optimism", async () => {
+    mockBlockEvent = new TestBlockEvent().setNumber(mockBlockNumber);
+
+    mockProvider = new MockEthersProvider();
+    mockProvider.setNetwork(CHAIN_IDS.Optimism);
+
+    mockProvider.addCallTo(mockAddresses.l2Dai, mockBlockNumber, iface, "totalSupply", {
+      inputs: [],
+      outputs: [mockL2Supply2],
     });
 
+    handleBlock = provideHandleBlock(mockProvider as any, iface, mockAddresses, mockGetAlerts);
 
+    const findingsOptimism = await handleBlock(mockBlockEvent);
+
+    mockProvider = new MockEthersProvider();
+    mockProvider.setNetwork(CHAIN_IDS.Arbitrum);
+
+    mockProvider.addCallTo(mockAddresses.l2Dai, mockBlockNumber, iface, "totalSupply", {
+      inputs: [],
+      outputs: [mockL2Supply2],
+    });
+
+    handleBlock = provideHandleBlock(mockProvider as any, iface, mockAddresses, mockGetAlerts);
+
+    const findingsArbitrum = await handleBlock(mockBlockEvent);
+
+    expect(findingsOptimism).toStrictEqual([mockInvariantFindingOptimism]);
+    expect(findingsArbitrum).toStrictEqual([mockInvariantFindingArbitrum]);
+  });
 });
