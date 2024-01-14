@@ -10,7 +10,7 @@ import {
 import { providers, BigNumber, Contract } from "ethers";
 import { Interface } from "ethers/lib/utils";
 import { Addresses, getEscrowBalances, verifyInvariant } from "./utils";
-import { BALANCE_ABI, TOTAL_SUPPLY_ABI, BOT_ID, CHAIN_IDS, ADDRESSES } from "./constants";
+import { BALANCE_ABI, TOTAL_SUPPLY_ABI, BOT_ID, CHAIN_IDS, ADDRESSES, L1_ALERT_ID } from "./constants";
 import { createEscrowFinding, createInvariantFinding } from "./findings";
 
 const provider = getEthersProvider();
@@ -20,7 +20,7 @@ const iface = new Interface([BALANCE_ABI, TOTAL_SUPPLY_ABI]);
 //query for alerts fired by this bot
 const query: AlertQueryOptions = {
   botIds: [BOT_ID],
-  alertId: "L1-Escrow-Balance",
+  alertId: L1_ALERT_ID,
   first: 1,
 };
 

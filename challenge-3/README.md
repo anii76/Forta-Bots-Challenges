@@ -15,7 +15,7 @@ L1Dai.balanceOf(Escrow) >= L2Dai.totalSupply()
 
 ## Alerts
 
-- L1-Escrow-Balance
+- L1-ESCROW-BALANCES
   - Fired when a new block is mined, to get both Optimism & Arbitrum escrow's balances.
   - Severity is always set to "info".
   - Type is always set to "info".
@@ -23,7 +23,7 @@ L1Dai.balanceOf(Escrow) >= L2Dai.totalSupply()
     - `balanceArbitrum`: L1 Arbitrum's escrow contract balance.
     - `balanceOptimism`: L1 Optimism's escrow contract balance. 
 
-- MakerDAO-Invariant-Violated
+- MAKERDAO-INVARIANT-VIOLATED
   - Fired when the `totalSupply` of L2Dai contract exceeds escrow's balance on L1.
   - Severity is always set to "high".
   - Type is always set to "suspicious".
