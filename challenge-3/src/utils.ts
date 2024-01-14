@@ -13,13 +13,13 @@ export type Addresses = {
 export type Balances = {
   balanceArbitrum: BigNumber;
   balanceOptimism: BigNumber;
-}
+};
 
 export type InvariantData = {
   isViolated: boolean;
   escrowBalance: BigNumber;
   l2DaiSupply: BigNumber;
-}
+};
 
 export const getEscrowBalances = async (
   iface: Interface,
@@ -29,7 +29,6 @@ export const getEscrowBalances = async (
   escrowArbitrumAddress: string,
   escrowOptimismAddress: string
 ): Promise<Balances> => {
-
   const daiContract = new Contract(l1DaiAddress, iface, provider);
 
   const balanceArbitrum: BigNumber = await daiContract.balanceOf(escrowArbitrumAddress, { blockTag: blockNumber });

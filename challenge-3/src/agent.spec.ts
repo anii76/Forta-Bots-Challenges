@@ -84,10 +84,6 @@ describe("MakerDAO's Bridge Invariant Check", () => {
   let mockBlockEvent: TestBlockEvent;
   let mockProvider: MockEthersProvider;
 
-  beforeEach(() => {
-    mockProvider = new MockEthersProvider();
-  });
-
   //checks escrow balances
   it("returns escrow balances on L1", async () => {
     mockBlockEvent = new TestBlockEvent().setNumber(mockBlockNumber);

@@ -4,7 +4,7 @@ export const BOT_ID = "0xdb5f76edad8195236876f0ddf13c2e6b3ac807e5b2b6a9d8b7795a8
 export const BALANCE_ABI = "function balanceOf(address account) external view returns (uint256)";
 export const TOTAL_SUPPLY_ABI = "function totalSupply() external view returns (uint256)";
 export const L1_ALERT_ID = "L1-ESCROW-BALANCES";
-export const L2_ALERT_ID = "MAKERDAO-INVARIANT-VIOLATED"
+export const L2_ALERT_ID = "MAKERDAO-INVARIANT-VIOLATED";
 
 export const ADDRESSES: Addresses = {
   l1Dai: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
