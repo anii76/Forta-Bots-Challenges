@@ -69,7 +69,6 @@ export const provideHandleBlock =
         const results = await getAlerts(query);
         if (results.alerts.length == 0) return findings;
         const lastAlert = results.alerts[0];
-        
 
         //verify if invariant is violated
         const { isViolated, escrowBalance, l2DaiSupply } = await verifyInvariant(
