@@ -190,7 +190,7 @@ describe("MakerDAO's Bridge Invariant Check", () => {
     expect(findings).toStrictEqual([mockInvariantFindingArbitrum]);
   });
 
-  //test if the invariant have been violated
+  //test if the invariant have been violated on both L2 chains
   it("returns findings if the invariant has been violated on both Arbitrum & Optimism", async () => {
     mockBlockEvent = new TestBlockEvent().setNumber(mockBlockNumber);
 
