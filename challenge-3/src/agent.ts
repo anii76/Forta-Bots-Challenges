@@ -1,17 +1,16 @@
-import { BlockEvent, Finding, HandleBlock, getEthersProvider, AlertQueryOptions } from "forta-agent";
+import {
+  BlockEvent,
+  Finding,
+  HandleBlock,
+  getEthersProvider,
+  AlertQueryOptions,
+  GetAlerts,
+  getAlerts,
+} from "forta-agent";
 import { providers, BigNumber, Contract } from "ethers";
 import { Interface } from "ethers/lib/utils";
-import { getAlerts, storeAlerts, getEscrowBalances, verifyInvariant } from "./utils";
-import {
-  BALANCE_ABI,
-  BOT_ID,
-  CHAIN_IDS,
-  DAI_L1_ADDRESS,
-  DAI_L2_ADDRESS,
-  ESCROW_ARBITRUM_ADDRESS,
-  ESCROW_OPTIMISM_ADDRESS,
-  TOTAL_SUPPLY_ABI,
-} from "./constants";
+import { Addresses, getEscrowBalances, verifyInvariant } from "./utils";
+import { BALANCE_ABI, TOTAL_SUPPLY_ABI, BOT_ID, CHAIN_IDS, ADDRESSES } from "./constants";
 import { createEscrowFinding, createInvariantFinding } from "./findings";
 
 const provider = getEthersProvider();
@@ -25,13 +24,10 @@ const query: AlertQueryOptions = {
   first: 1,
 };
 
-//Addresses
-const addresses = [DAI_L1_ADDRESS, DAI_L2_ADDRESS, ESCROW_ARBITRUM_ADDRESS, ESCROW_OPTIMISM_ADDRESS];
-
 //use multicall to request both token balances in one call
 
 export const provideHandleBlock =
-  (provider: providers.Provider, iface: Interface, addresses: string[], alertQuery: AlertQueryOptions): HandleBlock =>
+  (provider: providers.Provider, iface: Interface, addresses: Addresses, getAlerts: GetAlerts): HandleBlock =>
   async (blockEvent: BlockEvent) => {
     const findings: Finding[] = [];
 
@@ -45,21 +41,19 @@ export const provideHandleBlock =
           iface,
           provider,
           blockNumber,
-          addresses[0],
-          addresses[2],
-          addresses[3]
+          addresses.l1Dai,
+          addresses.escrowArbitrum,
+          addresses.escrowOptimism
         );
-        findings.push(createEscrowFinding(balanceArbitrum.toString(), balanceOptimism.toString()));
 
-        //Store findings for later usage
-        storeAlerts(findings, BOT_ID);
+        findings.push(createEscrowFinding(balanceArbitrum.toString(), balanceOptimism.toString()));
       } else if (chainId == CHAIN_IDS.Arbitrum || chainId == CHAIN_IDS.Optimism) {
         //Get Alerts
-        const results = await getAlerts(alertQuery);
+        const results = await getAlerts(query);
         if (results.alerts.length == 0) return findings;
         const lastAlert = results.alerts[0];
         const { isViolated, escrowBalance, l2DaiSupply } = await verifyInvariant(
-          addresses[1],
+          addresses.l2Dai,
           chainId,
           lastAlert,
           iface,
@@ -80,5 +74,5 @@ export const provideHandleBlock =
   };
 
 export default {
-  handleBlock: provideHandleBlock(provider, iface, addresses, query),
+  handleBlock: provideHandleBlock(provider, iface, ADDRESSES, getAlerts),
 };

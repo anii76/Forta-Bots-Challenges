@@ -4,6 +4,13 @@ import { Alert, AlertQueryOptions, AlertsResponse, Finding, GetAlerts } from "fo
 import { CHAIN_IDS } from "./constants";
 import * as fs from "fs";
 
+export type Addresses = {
+  l1Dai: string;
+  l2Dai: string;
+  escrowArbitrum: string;
+  escrowOptimism: string;
+};
+
 export const getEscrowBalances = async (
   iface: Interface,
   provider: providers.Provider,
