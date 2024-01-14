@@ -17,14 +17,14 @@ const provider = getEthersProvider();
 
 const iface = new Interface([BALANCE_ABI, TOTAL_SUPPLY_ABI]);
 
-// Query for alerts fired by this bot
+//query for alerts fired by this bot
 const query: AlertQueryOptions = {
   botIds: [BOT_ID],
   alertId: "L1-Escrow-Balance",
   first: 1,
 };
 
-// store previous balances
+//store previous balances
 let previousBalances = {
   balanceArbitrum: BigNumber.from(0),
   balanceOptimism: BigNumber.from(0),
@@ -40,7 +40,7 @@ export const provideHandleBlock =
 
     try {
       if (chainId == CHAIN_IDS.Ethereum) {
-        //Check escrow balances
+        //check escrow balances
         const { balanceArbitrum, balanceOptimism } = await getEscrowBalances(
           iface,
           provider,
@@ -65,10 +65,13 @@ export const provideHandleBlock =
           findings.push(createEscrowFinding(balanceArbitrum.toString(), balanceOptimism.toString()));
         }
       } else if (chainId == CHAIN_IDS.Arbitrum || chainId == CHAIN_IDS.Optimism) {
-        //Get Alerts
+        //get latest alert
         const results = await getAlerts(query);
         if (results.alerts.length == 0) return findings;
         const lastAlert = results.alerts[0];
+        
+
+        //verify if invariant is violated
         const { isViolated, escrowBalance, l2DaiSupply } = await verifyInvariant(
           addresses.l2Dai,
           chainId,
@@ -78,7 +81,7 @@ export const provideHandleBlock =
           blockNumber
         );
 
-        //Update findings when invariant is violated
+        //update findings when invariant is violated
         if (isViolated)
           findings.push(createInvariantFinding(escrowBalance.toString(), l2DaiSupply.toString(), chainId));
       }
