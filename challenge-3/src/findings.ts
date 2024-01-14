@@ -8,6 +8,7 @@ export const createEscrowFinding = (balanceArbitrum: string, balanceOptimism: st
     alertId: "L1-Escrow-Balance",
     severity: FindingSeverity.Info,
     type: FindingType.Info,
+    protocol: "Ethereum",
     metadata: {
       balanceArbitrum: balanceArbitrum,
       balanceOptimism: balanceOptimism,
@@ -23,6 +24,7 @@ export const createInvariantFinding = (escrowBalance: string, l2DaiSupply: strin
     alertId: "MakerDAO-Invariant-Violated",
     severity: FindingSeverity.High,
     type: FindingType.Suspicious,
+    protocol: networkName,
     metadata: {
       network: network.toString(),
       l2DaiSupply: l2DaiSupply,
