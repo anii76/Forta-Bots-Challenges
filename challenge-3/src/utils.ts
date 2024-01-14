@@ -2,7 +2,6 @@ import { Interface } from "@ethersproject/abi";
 import { BigNumber, Contract, providers } from "ethers";
 import { Alert, AlertQueryOptions, AlertsResponse, Finding, GetAlerts } from "forta-agent";
 import { CHAIN_IDS } from "./constants";
-import * as fs from "fs";
 
 export type Addresses = {
   l1Dai: string;
@@ -11,6 +10,17 @@ export type Addresses = {
   escrowOptimism: string;
 };
 
+export type Balances = {
+  balanceArbitrum: BigNumber;
+  balanceOptimism: BigNumber;
+}
+
+export type InvariantData = {
+  isViolated: boolean;
+  escrowBalance: BigNumber;
+  l2DaiSupply: BigNumber;
+}
+
 export const getEscrowBalances = async (
   iface: Interface,
   provider: providers.Provider,
@@ -18,7 +28,7 @@ export const getEscrowBalances = async (
   l1DaiAddress: string,
   escrowArbitrumAddress: string,
   escrowOptimismAddress: string
-): Promise<any> => {
+): Promise<Balances> => {
 
   const daiContract = new Contract(l1DaiAddress, iface, provider);
 
@@ -35,7 +45,7 @@ export const verifyInvariant = async (
   iface: Interface,
   provider: providers.Provider,
   blockNumber: number
-): Promise<any> => {
+): Promise<InvariantData> => {
   const escrowBalance: BigNumber =
     chainId == CHAIN_IDS.Arbitrum ? alert.metadata.balanceArbitrum : alert.metadata.balanceOptimism;
   const daiContract = new Contract(l2DaiAddress, iface, provider);
